@@ -6,6 +6,10 @@ import {
   scoreFlight,
 } from "@/lib/flight";
 
+import {
+  parseUserPreferenceWithFallback,
+} from "@/lib/flight/parser/parse-user-preference-with-fallback";
+
 type ResultsPageProps = {
   searchParams: Promise<{
     q?: string;
@@ -90,9 +94,36 @@ export default async function ResultsPage({
     dateLabel = "다구간";
   }
 
-  // 사용자의 자연어 검색문 분석
   const preference =
-    parseUserPreference(query);
+    await parseUserPreferenceWithFallback(
+      query
+    );
+  
+  console.log(
+    "[parser result]",
+    {
+      query,
+      source:
+        preference.parserSource,
+  
+      confidence:
+        preference.confidence,
+  
+      detected:
+        preference
+          .detectedPreferences,
+  
+      unhandled:
+        preference
+          .unhandledPreferences,
+  
+      filters:
+        preference.filters,
+  
+      qualityWeights:
+        preference.qualityWeights,
+    }
+  );
 
   // 하드 필터 → 점수 계산 → 최종 순위 정렬
   const scoredFlights =

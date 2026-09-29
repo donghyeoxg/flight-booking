@@ -71,6 +71,12 @@ export type Flight = {
   
     // 개발 중 어떤 규칙이 잡혔는지 확인
     detectedPreferences: string[];
+
+    // 아직 현재 Flight/Scoring 구조로 표현할 수 없는 의도
+    unhandledPreferences: string[];
+
+    // 어떤 parser가 최종 결과를 만들었는지 확인
+    parserSource: "rule" | "llm";
   };
   
   export type FlightScore = {
