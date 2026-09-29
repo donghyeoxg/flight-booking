@@ -1,7 +1,10 @@
+import { ResultsRefinements } from "../components/results-refinements";
+import { parseRequiredSearch } from "@/lib/flight/search/parse-required-search";
+import { matchesRoute } from "@/lib/flight/search/matches-route";
+import { koreaToday } from "@/lib/flight/search/dates";
 import {
   MOCK_MARKET_MEDIAN_PRICE,
   mockFlights,
-  parseUserPreference,
   passesHardFilters,
   scoreFlight,
 } from "@/lib/flight";
@@ -13,6 +16,8 @@ import {
 type ResultsPageProps = {
   searchParams: Promise<{
     q?: string;
+    origin?: string;
+    destination?: string;
     tripType?: string;
     travelers?: string;
     cabin?: string;
@@ -53,6 +58,11 @@ export default async function ResultsPage({
   const params = await searchParams;
 
   const query = params.q ?? "";
+  const today = koreaToday();
+  const tripKind = ["roundtrip", "oneway", "multicity"].includes(params.tripType ?? "") ? params.tripType! : "roundtrip";
+  const required = parseRequiredSearch(query, { ...params, defaultOrigin: "seoul", tripType: tripKind, today });
+  const serializedParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) if (typeof value === "string") serializedParams.set(key, value);
 
   const tripType =
     tripTypeLabels[params.tripType ?? "roundtrip"] ??
@@ -66,16 +76,16 @@ export default async function ResultsPage({
     "이코노미";
 
   const departureDate =
-    formatDate(params.departureDate);
+    formatDate(required.departureDate.status === "resolved" ? required.departureDate.value : undefined);
 
   const returnDate =
-    formatDate(params.returnDate);
+    formatDate(required.returnDate.status === "resolved" ? required.returnDate.value : undefined);
 
-  let dateLabel = "날짜 미지정";
+  let dateLabel = departureDate ? `${departureDate} → 귀국일 선택 필요` : "날짜 선택 필요";
 
   if (
     departureDate &&
-    params.tripType === "oneway"
+    tripKind === "oneway"
   ) {
     dateLabel = departureDate;
   }
@@ -83,13 +93,13 @@ export default async function ResultsPage({
   if (
     departureDate &&
     returnDate &&
-    params.tripType === "roundtrip"
+    tripKind === "roundtrip"
   ) {
     dateLabel = `${departureDate} → ${returnDate}`;
   }
 
   if (
-    params.tripType === "multicity"
+    tripKind === "multicity"
   ) {
     dateLabel = "다구간";
   }
@@ -128,6 +138,7 @@ export default async function ResultsPage({
   // 하드 필터 → 점수 계산 → 최종 순위 정렬
   const scoredFlights =
     mockFlights
+      .filter((flight) => matchesRoute(flight, required))
       .filter((flight) =>
         passesHardFilters(
           flight,
@@ -184,6 +195,14 @@ export default async function ResultsPage({
           </div>
         </div>
 
+        <ResultsRefinements key={serializedParams.toString()} query={query} tripType={tripKind} today={today}
+          initial={{ origin: params.origin, destination: params.destination, departureDate: params.departureDate, returnDate: params.returnDate }}
+          searchParams={serializedParams.toString()} />
+        <p className="mt-4 text-xs text-gray-500">
+          {required.ready ? "검색 조건이 설정되었습니다. " : "장소와 날짜를 선택하면 검색 조건을 완성할 수 있어요. "}
+          현재 결과는 예시 항공편이며, 선택한 날짜의 실제 운항 여부와 가격은 조회하지 않습니다.
+        </p>
+
         <div className="mt-10">
           {scoredFlights.length === 0 ? (
             <div className="rounded-2xl border border-gray-200 p-8 text-center">
@@ -192,8 +211,8 @@ export default async function ResultsPage({
               </p>
 
               <p className="mt-2 text-sm text-gray-500">
-                가격이나 직항 조건을 조금
-                완화해서 다시 검색해보세요.
+                선택한 노선의 예시 항공편이 없거나 선호 조건에 맞지 않습니다.
+                목적지나 가격·직항 조건을 바꿔보세요.
               </p>
             </div>
           ) : (

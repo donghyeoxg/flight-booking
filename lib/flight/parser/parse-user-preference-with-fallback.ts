@@ -36,7 +36,8 @@ import type {
      * API 호출 없이 바로 반환
      */
     if (
-      !rulePreference.shouldUseAI
+      !rulePreference.shouldUseAI ||
+      !process.env.OPENAI_API_KEY
     ) {
       return rulePreference;
     }

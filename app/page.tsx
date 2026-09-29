@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { SearchRefinements } from "./components/search-refinements";
+import { parseRequiredSearch } from "@/lib/flight/search/parse-required-search";
+import { koreaToday } from "@/lib/flight/search/dates";
+import type { SearchField } from "@/lib/flight/search/types";
 
 type TripType = "roundtrip" | "oneway" | "multicity";
 type CabinClass = "economy" | "premium" | "business" | "first";
@@ -10,6 +14,9 @@ export default function Home() {
   const router = useRouter();
 
   const [searchText, setSearchText] = useState("");
+  const [today] = useState(() => koreaToday());
+  const [origin, setOrigin] = useState("");
+  const [destination, setDestination] = useState("");
 
   const [tripType, setTripType] = useState<TripType>("roundtrip");
 
@@ -48,12 +55,29 @@ export default function Home() {
     multicity: "다구간",
   };
 
+  const required = parseRequiredSearch(searchText, { today, defaultOrigin: "seoul", origin, destination, departureDate, returnDate, tripType });
+  const selectField = (field: SearchField, value: string) => {
+    if (field === "origin") setOrigin(value);
+    if (field === "destination") setDestination(value);
+    if (field === "departureDate") {
+      setDepartureDate(value);
+      if (returnDate && value > returnDate) setReturnDate("");
+    }
+    if (field === "returnDate") setReturnDate(value);
+  };
+  const changeQuery = (value: string) => {
+    setSearchText(value);
+    setDestination("");
+  };
+
   const handleSearch = () => {
     if (!searchText.trim()) return;
 
     const params = new URLSearchParams();
 
     params.set("q", searchText);
+    if (origin) params.set("origin", origin);
+    if (destination) params.set("destination", destination);
     params.set("tripType", tripType);
     params.set("travelers", totalTravelers.toString());
     params.set("cabin", cabinClass);
@@ -103,7 +127,7 @@ export default function Home() {
               type="text"
               value={searchText}
               onChange={(event) =>
-                setSearchText(event.target.value)
+                changeQuery(event.target.value)
               }
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
@@ -121,6 +145,8 @@ export default function Home() {
               검색
             </button>
           </div>
+
+          {searchText.trim() && <SearchRefinements key={searchText} search={required} tripType={tripType} onSelect={selectField} />}
 
           {/* 여행 형태 */}
           <div className="mt-4 flex justify-center">
@@ -356,7 +382,7 @@ export default function Home() {
             {keywords.map((keyword) => (
               <button
                 key={keyword}
-                onClick={() => setSearchText(keyword)}
+                onClick={() => changeQuery(keyword)}
                 className="rounded-full bg-gray-100 px-4 py-2 text-gray-600 transition hover:bg-gray-200 hover:text-black"
               >
                 {keyword}

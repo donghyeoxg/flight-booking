@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "outDir": ".test-build",
+    "rootDir": "lib/flight",
+    "noEmit": false,
+    "incremental": false,
+    "plugins": []
+  },
+  "include": ["lib/flight/**/*.ts"],
+  "exclude": ["node_modules"]
+}
